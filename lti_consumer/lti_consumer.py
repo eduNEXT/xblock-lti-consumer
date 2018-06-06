@@ -421,13 +421,19 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         default=False,
         scope=Scope.settings
     )
+    replace_org_id_with_display = Boolean(
+        display_name=_("Use display name for the organization"),
+        help=_("Select True to replace the organization ID with the display name when launching the target."),
+        default=False,
+        scope=Scope.settings
+    )
 
     # Possible editable fields
     editable_field_names = (
         'display_name', 'description', 'lti_id', 'launch_url', 'custom_parameters',
         'launch_target', 'button_text', 'inline_height', 'modal_height', 'modal_width',
         'has_score', 'weight', 'hide_launch', 'accept_grades_past_due', 'ask_to_send_username',
-        'ask_to_send_email'
+        'ask_to_send_email', 'replace_org_id_with_display'
     )
 
     def validate_field_data(self, validation, data):
@@ -478,6 +484,9 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         context_id is an opaque identifier that uniquely identifies the context (e.g., a course)
         that contains the link being launched.
         """
+        if self.replace_org_id_with_display:
+            return unicode(self.course_id.replace(
+                org=self.course.display_org_with_default))  # pylint: disable=no-member
         return unicode(self.course_id)  # pylint: disable=no-member
 
     @property
