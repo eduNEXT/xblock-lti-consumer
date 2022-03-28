@@ -551,6 +551,13 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         default=False,
         scope=Scope.settings
     )
+    ask_to_send_fullname = Boolean(
+        display_name=_("Request user's full name"),
+        # Translators: This is used to request the user's full name for a third party service.
+        help=_("Select True to request the user's full name."),
+        default=False,
+        scope=Scope.settings,
+    )
     ask_to_send_email = Boolean(
         display_name=_("Request user's email"),
         # Translators: This is used to request the user's email for a third party service.
@@ -581,7 +588,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
         # Other parameters
         'custom_parameters', 'launch_target', 'button_text', 'inline_height', 'modal_height',
         'modal_width', 'has_score', 'weight', 'hide_launch', 'accept_grades_past_due',
-        'ask_to_send_username', 'ask_to_send_email', 'enable_processors',
+        'ask_to_send_username', 'ask_to_send_email', 'ask_to_send_fullname', 'enable_processors',
     )
 
     # Author view
@@ -601,6 +608,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                         description=""
                         ask_to_send_username="False"
                         ask_to_send_email="False"
+                        ask_to_send_fullname="False"
                         enable_processors="True"
                         launch_target="new_window"
                         launch_url="https://lti.tools/saltire/tp" />
@@ -610,6 +618,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                         lti_id="test"
                         ask_to_send_username="False"
                         ask_to_send_email="False"
+                        ask_to_send_fullname="False"
                         enable_processors="True"
                         description=""
                         launch_target="iframe"
@@ -661,8 +670,8 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
     @property
     def editable_fields(self):
         """
-        Returns editable fields which may/may not contain 'ask_to_send_username' and
-        'ask_to_send_email' fields depending on the configuration service.
+        Returns editable fields which may/may not contain 'ask_to_send_username',
+        'ask_to_send_email' and 'ask_to_send_fullname' fields depending on the configuration service.
         """
         editable_fields = self.editable_field_names
 
@@ -675,10 +684,10 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                 if field not in ['config_type', 'external_config']
             )
         # update the editable fields if this XBlock is configured to not to allow the
-        # editing of 'ask_to_send_username' and 'ask_to_send_email'.
+        # editing of 'ask_to_send_username', 'ask_to_send_email' and ask_to_send_fullname.
         config_service = self.runtime.service(self, 'lti-configuration')
         if config_service:
-            is_already_sharing_learner_info = self.ask_to_send_email or self.ask_to_send_username
+            is_already_sharing_learner_info = self.ask_to_send_email or self.ask_to_send_username or self.ask_to_send_fullname
             if not config_service.configuration.lti_access_to_learners_editable(
                     self.course_id,
                     is_already_sharing_learner_info,
@@ -686,7 +695,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
                 editable_fields = tuple(
                     field
                     for field in editable_fields
-                    if field not in ('ask_to_send_username', 'ask_to_send_email')
+                    if field not in ('ask_to_send_username', 'ask_to_send_email', 'ask_to_send_fullname')
                 )
 
         return editable_fields
@@ -954,6 +963,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             'user_email': None,
             'user_username': None,
             'user_language': None,
+            'user_fullname': None,
         }
 
         try:
@@ -963,6 +973,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
 
         user_data['user_username'] = user.opt_attrs.get("edx-platform.username", None)
         user_data['user_language'] = user.opt_attrs.get("edx-platform.user_preferences", {}).get("pref-lang", None)
+        user_data['user_fullname'] = user.opt_attrs.get("edx-platform.fullname", None)
 
         return user_data
 
@@ -1062,6 +1073,8 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             username = real_user_data['user_username']
         if self.ask_to_send_email and real_user_data['user_email']:
             email = real_user_data['user_email']
+        if self.ask_to_send_fullname and real_user_data['user_fullname']:
+            fullname = real_user_data['user_fullname']
 
         lti_consumer.set_user_data(
             self.user_id,
@@ -1551,6 +1564,7 @@ class LtiConsumerXBlock(StudioEditableXBlockMixin, XBlock):
             'description': self.description,
             'ask_to_send_username': self.ask_to_send_username,
             'ask_to_send_email': self.ask_to_send_email,
+            'ask_to_send_fullname': self.ask_to_send_fullname,
             'button_text': self.button_text,
             'inline_height': self.inline_height,
             'modal_vertical_offset': self._get_modal_position_offset(self.modal_height),
